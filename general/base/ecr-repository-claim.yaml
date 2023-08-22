@@ -1,0 +1,10 @@
+apiVersion: ecr.vesttoo.com/v1alpha1
+kind: ecrpolicy-claim
+metadata:
+  name: ecr-repo-claim
+  namespace: default
+spec:
+  parameters:
+    ecrRegion: "us-east-1"
+    ecrName: "crossplane"
+  providerConfigName: aws-provider-config

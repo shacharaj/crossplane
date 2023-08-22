@@ -1,0 +1,84 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: ecr-with-policy
+  labels:
+    vesttoo.general/provider: aws
+    service: ecr
+spec:
+  compositeTypeRef:
+    apiVersion: ecr.vesttoo.com/v1alpha1
+    kind: ecrpolicy
+  resources:
+    - name: ecr-repo
+      base:
+        apiVersion: ecr.aws.crossplane.io/v1beta1
+        kind: Repository
+        metadata:
+          name: general-ecr
+          labels:
+            type: ecr
+            name: general-ecr
+        spec:
+          forProvider:
+            region: us-east-1
+            imageScanningConfiguration:
+              scanOnPush: true
+            imageTagMutability: IMMUTABLE
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the region where the ecr will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.ecrRegion"
+          toFieldPath: "spec.forProvider.region"
+        # set the Name of the ecr that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.ecrName"
+          toFieldPath: "metadata.name"
+        - fromFieldPath: "spec.parameters.ecrName"
+          toFieldPath: "metadata.labels.name"
+    - name: ecr-repo-policy
+      base:
+        apiVersion: ecr.aws.crossplane.io/v1beta1
+        kind: RepositoryPolicy
+        metadata:
+          name: general-ecr-policy
+          labels:
+            type: ecr-policy
+            name: general-ecr-policy
+        spec:
+          forProvider:
+            region: us-east-1
+            repositoryNameRef:
+              name: devops-service
+            policy:
+              statements:
+                - action:
+                    - "ecr:BatchCheckLayerAvailability"
+                    - "ecr:BatchGetImage"
+                    - "ecr:CompleteLayerUpload"
+                    - "ecr:GetDownloadUrlForLayer"
+                    - "ecr:InitiateLayerUpload"
+                    - "ecr:PutImage"
+                    - "ecr:UploadLayerPart"
+                  effect: Allow
+                  principal:
+                    awsPrincipals:
+                      - awsAccountId: "408641797889"
+              version: '2012-10-17'
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the Region where the ecr-policy will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.ecrRegion"
+          toFieldPath: "spec.forProvider.region"
+        # set the Name of the ecr-repo that the policy will be attached to.
+        - fromFieldPath: "spec.parameters.ecrName"
+          toFieldPath: "spec.forProvider.repositoryNameRef.name"
+        # set the Name of the ecr-repo-policy that will be attached based on the Claim.
+        - fromFieldPath: "spec.parameters.ecrName"
+          toFieldPath: "metadata.name"
+        - fromFieldPath: "spec.parameters.ecrName"
+          toFieldPath: "metadata.labels.name"

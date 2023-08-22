@@ -1,0 +1,47 @@
+apiVersion: network.vesttoo.com/v1alpha1
+kind: vpcsubnet-claim
+metadata:
+  name: marketplace-vpcsubnet-claim
+  namespace: default
+spec:
+  parameters:
+    vpcRegion: "us-east-1"
+    environment: "marketplace"
+    suffix: ""
+    vpcName: "marketplace-vpc"
+    vpcCidrBlock: "172.21.96.0/16"
+    publicSubnet1Name: "marketplace-public-subnet-1"
+    publicSubnet1CidrBlock: "172.21.96.0/20"
+    publicSubnet1AvailabilityZone: us-east-1a
+    publicSubnet2Name: "marketplace-public-subnet-2"
+    publicSubnet2CidrBlock: "172.21.112.0/20"
+    publicSubnet2AvailabilityZone: us-east-1b
+    publicSubnet3Name: "marketplace-public-subnet-3"
+    publicSubnet3CidrBlock: "172.21.128.0/20"
+    publicSubnet3AvailabilityZone: us-east-1c
+    privateSubnet1Name: "marketplace-private-subnet-1"
+    privateSubnet1CidrBlock: "172.21.0.0/20"
+    privateSubnet1AvailabilityZone: us-east-1a
+    privateSubnet2Name: "marketplace-private-subnet-2"
+    privateSubnet2CidrBlock: "172.21.16.0/20"
+    privateSubnet2AvailabilityZone: us-east-1b
+    privateSubnet3Name: "marketplace-private-subnet-3"
+    privateSubnet3CidrBlock: "172.21.32.0/20"
+    privateSubnet3AvailabilityZone: us-east-1c
+    dbSubnet1Name: "marketplace-db-subnet-1"
+    dbSubnet1CidrBlock: "172.21.48.0/20"
+    dbSubnet1AvailabilityZone: us-east-1a
+    dbSubnet2Name: "marketplace-db-subnet-2"
+    dbSubnet2CidrBlock: "172.21.64.0/20"
+    dbSubnet2AvailabilityZone: us-east-1b
+    dbSubnet3Name: "marketplace-db-subnet-3"
+    dbSubnet3CidrBlock: "172.21.80.0/20"
+    dbSubnet3AvailabilityZone: us-east-1c
+    subnetLabelType: "marketplace-subnet"
+    igwName: "marketplace-igw"
+    natGatewayName: "marketplace-nat-gateway"
+    natGatewayDBName: "marketplace-nat-gateway-db"
+    publicRTName: "marketplace-public-rt"
+    privateRTName: "marketplace-private-rt"
+    dbRTName: "marketplace-db-rt"
+  providerConfigName: aws-provider-config

@@ -1,0 +1,27 @@
+apiVersion: volume.vesttoo.com/v1alpha1
+kind: rdswithmq-claim
+metadata:
+  name: marketplace-rdswithmq-claim
+  namespace: default
+spec:
+  parameters:
+    ## Global parameters
+    region: "us-east-1"
+    environment: "marketplace"
+    suffix: ""
+    dbClusterName: "marketplace-db"       # The RDS name to create.
+    ## RDS Input parameters
+    allocatedStorage: 30                  # the amount of storage (in gibibytes) to allocate for the DB instance.
+    backupRetentionPeriod: 14             # the number of days for which automated backups are retained.
+    dbInstanceClass: db.m5d.large         # DBInstanceClass is the compute and memory capacity of the DB instance
+    engineVersion: "14.7"                 # the version number of the database engine to use.
+    deletionProtection: false             # indicates if the DB instance should have deletion protection enabled.
+    publiclyAccessible: false             # PubliclyAccessible specifies the accessibility options for the DB instance.
+    masterUsername: postgres              # the name for the master user.
+    multiAZ: true                         # MultiAZ specifies if the DB instance is a Multi-AZ deployment.
+    ## RABBITMQ Input parameters
+    rabbitmqName: marketplace-rabbitmq    # The RABBITMQ name to create.
+    rabbitmqPassSecretNS: default         # This is the namesapce of the rabbitmq secret that will be used(secret created by marketplace-rabbitmq-secret.yaml)
+    hostInstanceType: mq.t3.micro         # the instance type to use for the rabbitmq.
+    mqEngineVersion: 3.9.27               # the version number of the rabbitmq engine to use (3.*).
+  providerConfigName: aws-provider-config

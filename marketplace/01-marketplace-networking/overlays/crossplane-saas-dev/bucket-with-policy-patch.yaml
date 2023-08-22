@@ -1,0 +1,11 @@
+- op: replace
+  path: /spec/forProvider/policy/statements/0/resource/0
+  value: arn:aws:s3:::vesttoo-marketplace-dev/*
+- op: replace
+  path: /metadata/annotations/crossplane.io~1external-name
+  value: vesttoo-marketplace-dev
+- op: add
+  path: /spec/forProvider/tagging/tagSet/-
+  value:
+    key: Environment
+    value: vesttoo-marketplace-dev

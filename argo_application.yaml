@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: marketplace-volumes-dev
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: git@gitlab.vesttoo.com:sw/devops/crossplane.git
+    targetRevision: master
+    path: marketplace/03-marketplace-volumes/overlays/crossplane-saas-dev
+  destination:
+    server: https://kubernetes.default.svc
+    #namespace: marketplace-saas-demo
+
+  # Extra information to show in the Argo CD Application details tab
+  info:
+    - name: 'Application created by:'
+      value: 'DevOps vesttoo, using kubectl apply command'
+    - name: 'Application configuration is in:'
+      value: 'crossplane repository using the argo_application.yaml'
+
+  # Sync policy
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true

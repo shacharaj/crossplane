@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ../../base
+namespace: crossplane-saas-dev
+patches:
+
+## Subnet patches per environment
+- target:
+    kind: rdswithmq-claim
+    name: marketplace-rdswithmq-claim
+  path: rdswithmq-patch.yaml
+
+nameSuffix: -dev

@@ -1,0 +1,42 @@
+apiVersion: cluster.vesttoo.com/v1alpha1
+kind: ekswithnode-claim
+metadata:
+  name: marketplace-ekswithnode-claim
+  namespace: default
+spec:
+  parameters:
+    ## Global parameters
+    providerConfigRef: aws-provider-config
+    region: "us-east-1"
+    ## EKS Input parameters
+    clusterName: "mp-eks-cluster"
+    environment: "marketplace"
+    enableLogging: true
+    k8sVersion: "1.27"
+    endpointPublicAccess: true
+    publicAccessCidrs: ["54.205.46.139/32", "52.1.150.81/32"] # VPN IP + Management cluster NAT IP for updating releases on the created cluster
+    ## EKS ADD-ONS ,CHARTS & PROVIDERS
+    coreDnsAddonName: "marketplace-coredns-addon"
+    vpcCniAddonName: "marketplace-vpc-cni-addon"
+    ebsCsiAddonName: "marketplace-aws-ebs-csi-driver-addon"
+    kubeProxyAddonName: "marketplace-kube-proxy-addon"
+    providerConfigHelmName: "provider-config-helm"
+    providerConfigK8SName: "provider-config-kubernetes"
+    karpenterChartVersion: "0.16.3"
+    prometheusChartVersion: "23.1.0"
+    #IAM
+    iamRoleControlplaneName: "marketplace-controlplane-role"      # needs to end with: -controlplane-role
+    iamRoleManagedNodeName: "marketplace-managed-nodegroup-role"  # needs to end with: -managed-nodegroup-role
+    ## EKS-NODES
+    nodegroupName: marketplace-nodegroup
+    amiType: "non-gpu"                # Type of workloads to be run on this cluster (gpu or non-gpu)"
+    desiredSize: 1                    # [1-8]
+    minSize: 1                        # [0-5]
+    maxSize: 2                        # [2-8]
+    instanceTypes: "xlarge"           # large | xlarge | 2xlarge
+  providerConfigName: aws-provider-config
+
+  ## TODO: ####
+  # Additional SG for cluster
+  # aws-auth cm
+  # helm charts configurations

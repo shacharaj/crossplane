@@ -1,0 +1,918 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: eks-with-nodes
+  labels:
+    vesttoo.marketplace/provider: aws
+    service: ekswithnodes
+    vesttoo.marketplace/xrd: ekswithnodes.cluster.vesttoo.com
+spec:
+  compositeTypeRef:
+    apiVersion: cluster.vesttoo.com/v1alpha1
+    kind: ekswithnode
+  writeConnectionSecretsToNamespace: crossplane-system
+  patchSets:
+    - name: common-parameters
+      patches:
+        - fromFieldPath: "spec.parameters.region"
+          toFieldPath: "spec.forProvider.region"
+        - fromFieldPath: "spec.parameters.providerConfigRef"
+          toFieldPath: "spec.providerConfigRef.name"
+  resources:
+    - name: eks-cluster
+      base:
+        apiVersion: eks.aws.crossplane.io/v1beta1
+        kind: Cluster
+        metadata:
+          name: marketplace-eks-cluster
+          labels:
+            type: cluster
+            name: marketplace-eks-cluster
+        spec:
+          forProvider:
+            region: us-east-1
+            roleArnSelector:
+              matchLabels:
+                name: marketplace-iamrole-controlplane
+            resourcesVpcConfig:
+              endpointPrivateAccess: true
+              endpointPublicAccess: true
+              publicAccessCidrs: ["54.205.46.139/32"]
+              subnetIdSelector:
+                matchLabels:
+                  subnet-type: private
+            version: "1.27"
+#            encryptionConfig:
+#              - provider:
+#                  keyARN: "arn:aws:kms:us-east-1:114656789026:key/1222457b-e124-4c88-a8dd-ded1ea4c3e68"
+#                resources: ["secrets"]
+            logging:
+              clusterLogging:
+                - enabled: true
+                  types:
+                    - api
+                    - audit
+                    - authenticator
+                - enabled: false
+                  types:
+                    - controllerManager
+                    - scheduler
+            tags:
+                  Name: marketplace-eks-cluster
+                  CreatedBy: marketplace-crossplane
+                  Maintainers: Vesttoo DevOps
+                  Composition: eks-with-nodes
+                  Environment: marketplace
+          writeConnectionSecretToRef:
+            name: cluster-connection
+            namespace: crossplane-system
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Name of the EKS-Cluster that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.clusterName"
+          toFieldPath: "spec.forProvider.tags.Name"
+        - fromFieldPath: "spec.parameters.clusterName"
+          toFieldPath: "metadata.labels.name"
+        - fromFieldPath: "spec.parameters.clusterName"
+          toFieldPath: "metadata.name"
+        # set the Kubernetes version of the eks cluster will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.k8sVersion"
+          toFieldPath: "spec.forProvider.version"
+        # set the Networking configurations of the cluster that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "private%s"
+          toFieldPath: spec.forProvider.resourcesVpcConfig.subnetIdSelector.matchLabels.subnet-type
+        - fromFieldPath: "spec.parameters.endpointPublicAccess"
+          toFieldPath: "spec.forProvider.resourcesVpcConfig.endpointPublicAccess"
+        - fromFieldPath: "spec.parameters.publicAccessCidrs"
+          toFieldPath: "spec.forProvider.resourcesVpcConfig.publicAccessCidrs"
+        # set the logging configuration of the EKS cluster that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.enableLogging"
+          toFieldPath: "spec.forProvider.clusterLogging[0].logging.enabled"
+        # set the Name of the Environment that resources be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags.Environment"
+        # Change the role match label.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.iamRoleControlplaneName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: spec.forProvider.roleArnSelector.matchLabels.name
+          policy:
+            fromFieldPath: Required
+        # Secret ref
+        - fromFieldPath: spec.writeConnectionSecretToRef.namespace
+          toFieldPath: spec.writeConnectionSecretToRef.namespace
+    ## IAM
+    - name: iamrole-controlplane
+      base:
+        apiVersion: iam.aws.crossplane.io/v1beta1
+        kind: Role
+        metadata:
+          name: marketplace-iamrole-controlplane
+          labels:
+            type: iamrole
+            name: marketplace-iamrole-controlplane
+        spec:
+          forProvider:
+            assumeRolePolicyDocument: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": [
+                                "eks.amazonaws.com"
+                            ]
+                        },
+                        "Action": [
+                            "sts:AssumeRole"
+                        ]
+                    }
+                ]
+              }
+            tags:
+              - key: Name
+                value: marketplace-iamrole-controlplane
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: eks-with-nodes
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the Name of the Controlplane IAM-Role that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.iamRoleControlplaneName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: spec.forProvider.tags[0].value
+          policy:
+            fromFieldPath: Required
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.iamRoleControlplaneName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: "metadata.name"
+          policy:
+            fromFieldPath: Required
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.iamRoleControlplaneName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: "metadata.labels.name"
+          policy:
+            fromFieldPath: Required
+    - name: iamattachment-controlplane
+      base:
+        apiVersion: iam.aws.crossplane.io/v1beta1
+        kind: RolePolicyAttachment
+        metadata:
+          name: marketplace-iamattachment-controlplane
+          labels:
+            type: iamattachment
+            name: marketplace-iamattachment-controlplane
+        spec:
+          forProvider:
+            policyArn: arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+            roleNameSelector:
+              matchLabels:
+                name: marketplace-iamrole-controlplane
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the Name of the Controlplane IAM-Role to attached to the policy.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.iamRoleControlplaneName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: spec.forProvider.roleNameSelector.matchLabels.name
+          policy:
+            fromFieldPath: Required
+    - name: iamattachment-service
+      base:
+        apiVersion: iam.aws.crossplane.io/v1beta1
+        kind: RolePolicyAttachment
+        spec:
+          forProvider:
+            policyArn: arn:aws:iam::aws:policy/AmazonEKSServicePolicy
+            roleNameSelector:
+              matchLabels:
+                name: marketplace-iamrole-controlplane
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the Name of the Controlplane IAM-Role to attached to the policy.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.iamRoleControlplaneName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: spec.forProvider.roleNameSelector.matchLabels.name
+          policy:
+            fromFieldPath: Required
+    ## ADD-ONS
+    - name: coredns-addon
+      base:
+        apiVersion: eks.aws.crossplane.io/v1alpha1
+        kind: Addon
+        metadata:
+          name: marketplace-coredns-addon
+          labels:
+            type: addon
+            name: marketplace-coredns-addon
+        spec:
+          forProvider:
+            region: us-east-1
+            addonName: coredns
+            addonVersion: "v1.10.1-eksbuild.2"
+            clusterNameSelector:
+              matchLabels:
+                name: marketplace-eks-cluster
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Name of the add-on that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.coreDnsAddonName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: metadata.labels.name
+          policy:
+            fromFieldPath: Required
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.coreDnsAddonName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: metadata.name
+          policy:
+            fromFieldPath: Required
+        # set the Name of the EKS-Cluster that the Addon will be installed on.
+        - fromFieldPath: "spec.parameters.clusterName"
+          toFieldPath: "spec.forProvider.clusterNameSelector.matchLabels.name"
+    - name: vpc-cni-addon
+      base:
+        apiVersion: eks.aws.crossplane.io/v1alpha1
+        kind: Addon
+        metadata:
+          name: marketplace-vpc-cni-addon
+          labels:
+            type: addon
+            name: marketplace-vpc-cni-addon
+        spec:
+          forProvider:
+            region: us-east-1
+            addonName: vpc-cni
+            addonVersion: "v1.13.2-eksbuild.1"
+            clusterNameSelector:
+              matchLabels:
+                name: marketplace-eks-cluster
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Name of the add-on that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.vpcCniAddonName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: metadata.labels.name
+          policy:
+            fromFieldPath: Required
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.vpcCniAddonName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: metadata.name
+          policy:
+            fromFieldPath: Required
+        # set the Name of the EKS-Cluster that the Addon will be installed on.
+        - fromFieldPath: "spec.parameters.clusterName"
+          toFieldPath: "spec.forProvider.clusterNameSelector.matchLabels.name"
+    - name: aws-ebs-csi-driver-addon
+      base:
+        apiVersion: eks.aws.crossplane.io/v1alpha1
+        kind: Addon
+        metadata:
+          name: marketplace-aws-ebs-csi-driver-addon
+          labels:
+            type: addon
+            name: marketplace-aws-ebs-csi-driver-addon
+        spec:
+          forProvider:
+            region: us-east-1
+            addonName: aws-ebs-csi-driver
+            addonVersion: "v1.20.0-eksbuild.1"
+            clusterNameSelector:
+              matchLabels:
+                name: marketplace-aws-ebs-csi-driver-cluster
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Name of the add-on that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.ebsCsiAddonName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: metadata.labels.name
+          policy:
+            fromFieldPath: Required
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.ebsCsiAddonName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: metadata.name
+          policy:
+            fromFieldPath: Required
+        # set the Name of the EKS-Cluster that the Addon will be installed on.
+        - fromFieldPath: "spec.parameters.clusterName"
+          toFieldPath: "spec.forProvider.clusterNameSelector.matchLabels.name"
+    - name: kube-proxy-addon
+      base:
+        apiVersion: eks.aws.crossplane.io/v1alpha1
+        kind: Addon
+        metadata:
+          name: marketplace-kube-proxy-addon
+          labels:
+            type: addon
+            name: marketplace-kube-proxy-addon
+        spec:
+          forProvider:
+            region: us-east-1
+            addonName: kube-proxy
+            addonVersion: "v1.27.3-eksbuild.1"
+            clusterNameSelector:
+              matchLabels:
+                name: marketplace-eks-cluster
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Name of the add-on that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.kubeProxyAddonName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: metadata.labels.name
+          policy:
+            fromFieldPath: Required
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.kubeProxyAddonName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: metadata.name
+          policy:
+            fromFieldPath: Required
+        # set the Name of the EKS-Cluster that the Addon will be installed on.
+        - fromFieldPath: "spec.parameters.clusterName"
+          toFieldPath: "spec.forProvider.clusterNameSelector.matchLabels.name"
+    ## PROVIDERS
+    - name: helm
+      base:
+        apiVersion: helm.crossplane.io/v1beta1
+        kind: ProviderConfig
+        metadata:
+          name: provider-config-helm
+          labels:
+            type: provider-config
+        spec:
+          credentials:
+            source: Secret
+            secretRef:
+              key: kubeconfig
+              name: cluster-connection
+              namespace: crossplane-system
+      patches:
+      # set the Name of the provider that will be created based on the Claim.
+      - type: CombineFromComposite
+        combine:
+          variables:
+          - fromFieldPath: spec.parameters.providerConfigHelmName
+          - fromFieldPath: spec.parameters.suffix
+          strategy: string
+          string:
+            fmt: "%s%s"
+        toFieldPath: metadata.name
+        policy:
+          fromFieldPath: Required
+      - fromFieldPath: spec.writeConnectionSecretToRef.namespace
+        toFieldPath: spec.credentials.secretRef.namespace
+      readinessChecks:
+        - type: None
+    - name: kubernetes
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: ProviderConfig
+        metadata:
+          name: provider-config-kubernetes
+          labels:
+            type: provider-config
+        spec:
+          credentials:
+            source: Secret
+            secretRef:
+              key: kubeconfig
+              name: cluster-connection
+              namespace: crossplane-system
+      patches:
+      # set the Name of the provider that will be created based on the Claim.
+      - type: CombineFromComposite
+        combine:
+          variables:
+          - fromFieldPath: spec.parameters.providerConfigK8SName
+          - fromFieldPath: spec.parameters.suffix
+          strategy: string
+          string:
+            fmt: "%s%s"
+        toFieldPath: metadata.name
+        policy:
+          fromFieldPath: Required
+      - fromFieldPath: spec.writeConnectionSecretToRef.namespace
+        toFieldPath: spec.credentials.secretRef.namespace
+      readinessChecks:
+        - type: None
+    ## HELM-CHARTS
+    - name: prometheus
+      base:
+        apiVersion: helm.crossplane.io/v1beta1
+        kind: Release
+        metadata:
+          name: release-prometheus
+          labels:
+            type: helm
+            name: prometheus
+        spec:
+          rollbackLimit: 3
+          forProvider:
+            namespace: prometheus
+            chart:
+              name: prometheus
+              repository: https://prometheus-community.github.io/helm-charts
+              version: "23.1.0"
+          providerConfigRef:
+            name: provider-config-helm
+      patches:
+      - type: CombineFromComposite
+        combine:
+          variables:
+          - fromFieldPath: spec.parameters.providerConfigHelmName
+          - fromFieldPath: spec.parameters.suffix
+          strategy: string
+          string:
+            fmt: "%s%s"
+        toFieldPath: spec.providerConfigRef.name
+        policy:
+          fromFieldPath: Required
+      # set the Name of the Chart/Release that will be created based on the Claim.
+      - fromFieldPath: "spec.parameters.clusterName"
+        toFieldPath: "metadata.labels.name"
+        transforms:
+          - type: string
+            string:
+              fmt: "%s-prometheus"
+      - fromFieldPath: "spec.parameters.clusterName"
+        toFieldPath: "metadata.name"
+        transforms:
+          - type: string
+            string:
+              fmt: "%s-prometheus"
+      # Set the version of the chart that will be deployed on the created cluster.
+      - fromFieldPath: "spec.parameters.prometheusChartVersion"
+        toFieldPath: "spec.forProvider.chart.version"
+    - name: karpenter
+      base:
+        apiVersion: helm.crossplane.io/v1beta1
+        kind: Release
+        metadata:
+          name: karpenter
+          labels:
+            type: helm
+            name: karpenter
+        spec:
+          rollbackLimit: 3
+          forProvider:
+            namespace: karpenter
+            chart:
+              name: karpenter
+              repository: https://charts.karpenter.sh/
+              version: "0.16.3"
+      patches:
+      - type: CombineFromComposite
+        combine:
+          variables:
+          - fromFieldPath: spec.parameters.providerConfigHelmName
+          - fromFieldPath: spec.parameters.suffix
+          strategy: string
+          string:
+            fmt: "%s%s"
+        toFieldPath: spec.providerConfigRef.name
+        policy:
+          fromFieldPath: Required
+      # set the Name of the Chart/Release that will be created based on the Claim.
+      - fromFieldPath: "spec.parameters.clusterName"
+        toFieldPath: "metadata.labels.name"
+        transforms:
+          - type: string
+            string:
+              fmt: "%s-karpenter"
+      - fromFieldPath: "spec.parameters.clusterName"
+        toFieldPath: "metadata.name"
+        transforms:
+          - type: string
+            string:
+              fmt: "%s-karpenter"
+      # Set the version of the chart that will be deployed on the created cluster.
+      - fromFieldPath: "spec.parameters.karpenterChartVersion"
+        toFieldPath: "spec.forProvider.chart.version"
+#    - name: lbc #AWS Load-Balancer-Controller
+#      base:
+#        apiVersion: helm.crossplane.io/v1beta1
+#        kind: Release
+#        metadata:
+#          name: lbc
+#          labels:
+#            type: helm
+#            name: lbc
+#        spec:
+#          rollbackLimit: 3
+#          forProvider:
+#            namespace: default
+#            chart:
+#              name: aws-load-balancer-controller
+#              repository: https://aws.github.io/eks-charts
+#              version: "1.5.5"
+#      patches:
+#      - type: CombineFromComposite
+#        combine:
+#          variables:
+#          - fromFieldPath: spec.parameters.providerConfigHelmName
+#          - fromFieldPath: spec.parameters.suffix
+#          strategy: string
+#          string:
+#            fmt: "%s%s"
+#        toFieldPath: spec.providerConfigRef.name
+#        policy:
+#          fromFieldPath: Required
+#      # set the Name of the Chart/Release that will be created based on the Claim.
+#      - fromFieldPath: "spec.parameters.clusterName"
+#        toFieldPath: "metadata.labels.name"
+#        transforms:
+#          - type: string
+#            string:
+#              fmt: "%s-lbc"
+#      - fromFieldPath: "spec.parameters.clusterName"
+#        toFieldPath: "metadata.name"
+#        transforms:
+#          - type: string
+#            string:
+#              fmt: "%s-lbc"
+    ## EKS-NODES
+    - name: eks-nodegroup
+      base:
+        apiVersion: eks.aws.crossplane.io/v1alpha1
+        kind: NodeGroup
+        metadata:
+          name: marketplace-nodegroup
+          labels:
+            type: eks-nodegroup
+            name: marketplace-nodegroup
+        spec:
+          forProvider:
+            instanceTypes:
+              - xlarge
+            amiType: "AL2_x86_64"
+            scalingConfig:
+              minSize: 1
+              maxSize: 2
+              desiredSize: 1
+            subnetSelector:
+              matchLabels:
+                subnet-type: private
+            clusterNameSelector:
+              matchLabels:
+                name: marketplace-eks-cluster
+            nodeRoleSelector:
+              matchLabels:
+                name: marketplace-iamrole-managed-nodegroup
+            tags:
+              Name: marketplace-nodegroup
+              CreatedBy: marketplace-crossplane
+              Maintainers: Vesttoo DevOps
+              Composition: eks-with-nodes
+              Environment: marketplace
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Name of the EKS-Cluster that the nodes will be attached to.
+        - fromFieldPath: "spec.parameters.clusterName"
+          toFieldPath: "spec.forProvider.clusterNameSelector.matchLabels.name"
+        # set the Name of the EKS-Cluster that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.nodegroupName"
+          toFieldPath: "spec.forProvider.tags.Name"
+        - fromFieldPath: "spec.parameters.nodegroupName"
+          toFieldPath: "metadata.labels.name"
+        - fromFieldPath: "spec.parameters.nodegroupName"
+          toFieldPath: "metadata.name"
+        # Node scale parameters that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.desiredSize"
+          toFieldPath: "spec.forProvider.scalingConfig.desiredSize"
+        - fromFieldPath: "spec.parameters.maxSize"
+          toFieldPath: "spec.forProvider.scalingConfig.maxSize"
+        - fromFieldPath: "spec.parameters.minSize"
+          toFieldPath: "spec.forProvider.scalingConfig.minSize"
+        - fromFieldPath: "spec.parameters.amiType"
+          toFieldPath: "spec.forProvider.amiType"
+          transforms:
+          - type: map
+            map:
+              gpu: AL2_x86_64_GPU
+              non-gpu: AL2_x86_64
+        - fromFieldPath: spec.parameters.instanceTypes
+          toFieldPath: spec.forProvider.instanceTypes[0]
+          transforms:
+            - type: map
+              map:
+                large: m5.large
+                xlarge: m5.xlarge
+                2xlarge: m5.2xlarge
+        # Set the role that will be attached to the eks-node that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.iamRoleManagedNodeName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: spec.forProvider.nodeRoleSelector.matchLabels.name
+          policy:
+            fromFieldPath: Required
+        # Set the subnets that the eks-nodes will be created in, based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "private%s"
+          toFieldPath: spec.forProvider.subnetSelector.matchLabels.subnet-type
+    - name: eks-managed-nodegroup-iam-role
+      base:
+        apiVersion: iam.aws.crossplane.io/v1beta1
+        kind: Role
+        metadata:
+          name: marketplace-iamrole-managed-nodegroup
+          labels:
+            type: iamrole
+            name: marketplace-iamrole-managed-nodegroup
+        spec:
+          forProvider:
+            assumeRolePolicyDocument: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": [
+                                "ec2.amazonaws.com"
+                            ]
+                        },
+                        "Action": [
+                            "sts:AssumeRole"
+                        ]
+                    }
+                ]
+              }
+            tags:
+              - key: Name
+                value: marketplace-iamrole-managed-nodegroup
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: eks-with-nodes
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Name of the NODE IAM-Role that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+              - fromFieldPath: spec.parameters.iamRoleManagedNodeName
+              - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: spec.forProvider.tags[0].value
+          policy:
+            fromFieldPath: Required
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.iamRoleManagedNodeName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: "metadata.name"
+          policy:
+            fromFieldPath: Required
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.iamRoleManagedNodeName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: "metadata.labels.name"
+          policy:
+            fromFieldPath: Required
+    - name: eks-managed-nodegroup-worker-node-policy
+      base:
+        apiVersion: iam.aws.crossplane.io/v1beta1
+        kind: RolePolicyAttachment
+        spec:
+          forProvider:
+            policyArn: arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+            RoleNameSelector:
+              matchLabels:
+                name: marketplace-iamrole-managed-nodegroup
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Name of the managed-node IAM-Role to attached to the policy.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.iamRoleManagedNodeName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: spec.forProvider.roleNameSelector.matchLabels.name
+          policy:
+            fromFieldPath: Required
+    - name: eks-managed-nodegroup-container-registry-policy
+      base:
+        apiVersion: iam.aws.crossplane.io/v1beta1
+        kind: RolePolicyAttachment
+        spec:
+          forProvider:
+            policyArn: arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+            RoleNameSelector:
+              matchLabels:
+                name: marketplace-iamrole-managed-nodegroup
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Name of the managed-node IAM-Role to attached to the policy.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.iamRoleManagedNodeName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: spec.forProvider.roleNameSelector.matchLabels.name
+          policy:
+            fromFieldPath: Required
+    - name: eks-managed-nodegroup-ssm-policy
+      base:
+        apiVersion: iam.aws.crossplane.io/v1beta1
+        kind: RolePolicyAttachment
+        spec:
+          forProvider:
+            policyArn: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+            RoleNameSelector:
+              matchLabels:
+                name: marketplace-iamrole-managed-nodegroup
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Name of the managed-node IAM-Role to attached to the policy.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.iamRoleManagedNodeName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: spec.forProvider.roleNameSelector.matchLabels.name
+          policy:
+            fromFieldPath: Required
+    - name: eks-managed-nodegroup-cni-policy
+      base:
+        apiVersion: iam.aws.crossplane.io/v1beta1
+        kind: RolePolicyAttachment
+        spec:
+          forProvider:
+            policyArn: arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+            RoleNameSelector:
+              matchLabels:
+                name: marketplace-iamrole-managed-nodegroup
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Name of the managed-node IAM-Role to attached to the policy.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.iamRoleManagedNodeName
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "%s%s"
+          toFieldPath: spec.forProvider.roleNameSelector.matchLabels.name
+          policy:
+            fromFieldPath: Required

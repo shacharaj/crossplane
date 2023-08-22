@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ../../base
+namespace: crossplane-saas-dev
+patches:
+## Bucket patches per environment
+- target:
+    kind: Bucket
+    name: vesttoo-marketplace
+  path: bucket-with-policy-patch.yaml
+
+## Subnet patches per environment
+- target:
+    kind: vpcsubnet-claim
+    name: marketplace-vpcsubnet-claim
+  path: vpcsubnet-patch.yaml
+
+nameSuffix: -dev

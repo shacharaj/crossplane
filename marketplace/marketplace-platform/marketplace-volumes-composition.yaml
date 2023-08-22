@@ -1,0 +1,591 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: rds-with-mq
+  labels:
+    vesttoo.marketplace/provider: aws
+    service: rdswithmq
+    vesttoo.marketplace/xrd: rdswithmq.volume.vesttoo.com
+spec:
+  compositeTypeRef:
+    apiVersion: volume.vesttoo.com/v1alpha1
+    kind: rdswithmq
+  patchSets:
+    - name: common-parameters
+      patches:
+        - fromFieldPath: "spec.parameters.region"
+          toFieldPath: "spec.forProvider.region"
+        - fromFieldPath: "spec.parameters.providerConfigRef"
+          toFieldPath: "spec.providerConfigRef.name"
+  resources:
+    # RDS
+    - name: rds
+      base:
+        apiVersion: database.aws.crossplane.io/v1beta1
+        kind: RDSInstance
+        metadata:
+          name: marketplace-db
+          labels:
+            type: rds
+            name: marketplace-db
+        spec:
+          forProvider:
+            allocatedStorage: 600
+            autoMinorVersionUpgrade: false
+            applyModificationsImmediately: false
+            backupRetentionPeriod: 31
+            caCertificateIdentifier: rds-ca-2019
+            copyTagsToSnapshot: true
+            dbInstanceClass: db.m5d.large
+            dbSubnetGroupNameSelector:
+              matchLabels:
+                name: marketplace-subnet-group
+            vpcSecurityGroupIDSelector:
+              matchLabels:
+                name: marketplace-rds-sg
+            deletionProtection: false
+            enableCloudwatchLogsExports:
+              - postgresql
+              - upgrade
+            enableIAMDatabaseAuthentication: false
+            enablePerformanceInsights: false
+            engine: postgres
+            region: us-east-1
+            engineVersion: 14.7
+            preferredBackupWindow: 07:09-07:39
+            preferredMaintenanceWindow: Sun:18:37-Sun:21:07
+            publiclyAccessible: false
+            finalDBSnapshotIdentifier: production-snapshot
+            licenseModel: postgresql-license
+            masterUsername: postgres
+            multiAZ: true
+            storageEncrypted: true
+            storageType: gp3
+            port: 5432
+            tags:
+              - key: Name
+                value: marketplace-db
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: rdswithmq
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Name of the RDS that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.dbClusterName"
+          toFieldPath: "spec.forProvider.tags[0].value"
+        - fromFieldPath: "spec.parameters.dbClusterName"
+          toFieldPath: "metadata.name"
+        # set the RDS configurations that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.allocatedStorage"
+          toFieldPath: "spec.forProvider.allocatedStorage"
+        - fromFieldPath: "spec.parameters.backupRetentionPeriod"
+          toFieldPath: "spec.forProvider.backupRetentionPeriod"
+        - fromFieldPath: "spec.parameters.dbInstanceClass"
+          toFieldPath: "spec.forProvider.dbInstanceClass"
+        - fromFieldPath: "spec.parameters.engineVersion"
+          toFieldPath: "spec.forProvider.engineVersion"
+        - fromFieldPath: "spec.parameters.deletionProtection"
+          toFieldPath: "spec.forProvider.deletionProtection"
+        - fromFieldPath: "spec.parameters.publiclyAccessible"
+          toFieldPath: "spec.forProvider.publiclyAccessible"
+        - fromFieldPath: "spec.parameters.masterUsername"
+          toFieldPath: "spec.forProvider.masterUsername"
+        - fromFieldPath: "spec.parameters.multiAZ"
+          toFieldPath: "spec.forProvider.multiAZ"
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-subnet-group%s"
+          toFieldPath: spec.forProvider.dbSubnetGroupNameSelector.matchLabels.name
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-rds-sg%s"
+          toFieldPath: spec.forProvider.vpcSecurityGroupIDSelector.matchLabels.name
+        # set the Networking configurations of the cluster that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcId"
+          toFieldPath: "spec.forProvider.vpcId"
+        # Set the Environment name for the resource will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[4].value"
+    ## SUBNET-GROUP
+    - name: rds-subnet-group
+      base:
+        apiVersion: database.aws.crossplane.io/v1beta1
+        kind: DBSubnetGroup
+        metadata:
+          name: marketplace-subnet-group
+          labels:
+            type: rds
+            name: marketplace-subnet-group
+        spec:
+          forProvider:
+            region: us-east-1
+            description: "RDS Subnet group"
+            subnetIdSelector:
+              matchLabels:
+                subnet-type: db
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Name of the EKS-Cluster that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-subnet-group%s"
+          toFieldPath: metadata.name
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-subnet-group%s"
+          toFieldPath: metadata.labels.name
+        # set the Networking configurations of the cluster that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+              - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "db%s"
+          toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.subnet-type
+    ## RDS SG
+    - name: rds-sg
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: SecurityGroup
+        metadata:
+          name: marketplace-rds-sg
+          labels:
+            type: sg
+            name: marketplace-rds-sg
+        spec:
+          forProvider:
+            region: us-east-1
+            vpcIdSelector:
+              matchLabels:
+                name: marketplace-vpc
+            groupName: marketplace-rds-sg
+            description: RDS communication from applications and VPN
+            tags:
+              - key: Name
+                value: marketplace-rds-sg
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: rdswithmq
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Networking configurations of the cluster that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-vpc%s"
+          toFieldPath: spec.forProvider.vpcIdSelector.matchLabels.name
+        # Set the Environment name for the resource will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[4].value"
+        # set the Name of the SG that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-rds-sg%s"
+          toFieldPath: metadata.name
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-rds-sg%s"
+          toFieldPath: metadata.labels.name
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-rds-sg%s"
+          toFieldPath: spec.forProvider.groupName
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-rds-sg%s"
+          toFieldPath: spec.forProvider.tags[0].value
+    ## RDS SG RULES
+    - name: rds-sg-rule-vpn
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1alpha1
+        kind: SecurityGroupRule
+        metadata:
+          name: vpn-rds-sg-rule
+          labels:
+            type: sg-rule
+            name: vpn-rds-sg-rule
+        spec:
+          forProvider:
+            region: us-east-1
+            protocol: "tcp"
+            fromPort: 5432
+            toPort: 5432
+            type: "ingress"
+            securityGroupIdSelector:
+              matchLabels:
+                name: marketplace-rds-sg
+            cidrBlock: "54.205.46.139/32"
+            description: "RDS communication from the VPN"
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Name of the SG that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "vpn-rds-sg-rule%s"
+          toFieldPath: metadata.name
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-rds-sg%s"
+          toFieldPath: spec.forProvider.securityGroupIdSelector.matchLabels.name
+    - name: rds-sg-rule-vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1alpha1
+        kind: SecurityGroupRule
+        metadata:
+          name: vpc-rds-sg-rule
+          labels:
+            type: sg-rule
+            name: vpc-rds-sg-rule
+        spec:
+          forProvider:
+            region: us-east-1
+            protocol: "tcp"
+            fromPort: 5432
+            toPort: 5432
+            type: "ingress"
+            securityGroupIdSelector:
+              matchLabels:
+                name: marketplace-rds-sg
+            cidrBlock: "172.21.0.0/16"
+            description: "RDS communication from inside the VPC"
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Name of the SG that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "vpc-rds-sg-rule%s"
+          toFieldPath: metadata.name
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-rds-sg%s"
+          toFieldPath: spec.forProvider.securityGroupIdSelector.matchLabels.name
+    ## RABBITMQ
+    - name: rabbitmq
+      base:
+        apiVersion: mq.aws.crossplane.io/v1alpha1
+        kind: Broker
+        metadata:
+          name: marketplace-rabbitmq
+          labels:
+            type: mq
+            name: marketplace-rabbitmq
+        spec:
+          forProvider:
+            region: us-east-1
+            engineType: RabbitMQ
+            publiclyAccessible: false
+            autoMinorVersionUpgrade: false
+            engineVersion: 3.9.27
+            hostInstanceType: mq.t3.micro
+            deploymentMode: SINGLE_INSTANCE
+            subnetIDSelector:
+              matchLabels:
+                mq-subnet: mq
+            securityGroupIdSelector:
+              matchLabels:
+                name: marketplace-rabbitmq-sg
+            users:
+              # To manage broker users, please use the RabbitMQ web console, or the management API
+              - username: rabbitmq-admin
+                consoleAccess: true
+                passwordSecretRef:
+                  key: password
+                  name: marketplace-rabbitmq-pass
+                  namespace: crossplane-saas
+            tags:
+              Name: marketplace-rabbitmqName
+              CreatedBy: marketplace-crossplane
+              Maintainers: Vesttoo DevOps
+              Composition: rdswithmq
+              Environment: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+#        - type: PatchSet
+#          patchSetName: common-parameters
+        # set the Name of the RABBITMQ that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.rabbitmqName"
+          toFieldPath: "spec.forProvider.tags.Name"
+        - fromFieldPath: "spec.parameters.rabbitmqName"
+          toFieldPath: "metadata.name"
+        - fromFieldPath: "spec.parameters.rabbitmqName"
+          toFieldPath: "metadata.labels.name"
+        # set the Name of the Environment that resources be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags.Environment"
+        # set the RABBITMQ configurations that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.mqEngineVersion"
+          toFieldPath: "spec.forProvider.engineVersion"
+        - fromFieldPath: "spec.parameters.hostInstanceType"
+          toFieldPath: "spec.forProvider.hostInstanceType"
+        - type: CombineFromComposite
+          combine:
+            variables:
+              - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "mq%s"
+          toFieldPath: spec.forProvider.subnetIDSelector.matchLabels.mq-subnet
+        # set the namespace of the RABBITMQ secret to use to fetch the password from the secret.
+        - fromFieldPath: "spec.parameters.rabbitmqPassSecretNS"
+          toFieldPath: "spec.forProvider.users[0].passwordSecretRef.namespace"
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-rabbitmq-pass%s"
+          toFieldPath: "spec.forProvider.users[0].passwordSecretRef.name"
+        # Security group to attach to rabbitmq.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-rabbitmq-sg%s"
+          toFieldPath: spec.forProvider.securityGroupIdSelector.matchLabels.name
+    ## rabbitmq SG
+    - name: rabbitmq-sg
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: SecurityGroup
+        metadata:
+          name: marketplace-rabbitmq-sg
+          labels:
+            type: sg
+            name: marketplace-rabbitmq-sg
+        spec:
+          forProvider:
+            region: us-east-1
+            vpcIdSelector:
+              matchLabels:
+                name: marketplace-vpc
+            groupName: marketplace-rabbitmq-sg
+            description: RABBITMQ communication from applications and VPN
+            tags:
+              - key: Name
+                value: marketplace-rabbitmq-sg
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: rdswithmq
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Networking configurations of the cluster that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-vpc%s"
+          toFieldPath: spec.forProvider.vpcIdSelector.matchLabels.name
+        # Set the Environment name for the resource will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[4].value"
+        # set the Name of the SG that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-rabbitmq-sg%s"
+          toFieldPath: metadata.name
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-rabbitmq-sg%s"
+          toFieldPath: metadata.labels.name
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-rabbitmq-sg%s"
+          toFieldPath: spec.forProvider.groupName
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-rabbitmq-sg%s"
+          toFieldPath: spec.forProvider.tags[0].value
+    ## rabbitmq SG RULES
+    - name: rabbitmq-sg-rule-vpn
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1alpha1
+        kind: SecurityGroupRule
+        metadata:
+          name: vpn-rabbitmq-sg-rule
+          labels:
+            type: sg-rule
+            name: vpn-rabbitmq-sg-rule
+        spec:
+          forProvider:
+            region: us-east-1
+            protocol: "tcp"
+            fromPort: 5672
+            toPort: 5672
+            type: "ingress"
+            securityGroupIdSelector:
+              matchLabels:
+                name: marketplace-rabbitmq-sg
+            cidrBlock: "54.205.46.139/32"
+            description: "rabbitmq communication from the VPN"
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Name of the SG that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "vpn-rabbitmq-sg-rule%s"
+          toFieldPath: metadata.name
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-rabbitmq-sg%s"
+          toFieldPath: spec.forProvider.securityGroupIdSelector.matchLabels.name
+    - name: rabbitmq-sg-rule-vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1alpha1
+        kind: SecurityGroupRule
+        metadata:
+          name: vpc-rabbitmq-sg-rule
+          labels:
+            type: sg-rule
+            name: vpc-rabbitmq-sg-rule
+        spec:
+          forProvider:
+            region: us-east-1
+            protocol: "tcp"
+            fromPort: 5672
+            toPort: 5672
+            type: "ingress"
+            securityGroupIdSelector:
+              matchLabels:
+                name: marketplace-rabbitmq-sg
+            cidrBlock: "172.21.0.0/16"
+            description: "rabbitmq communication from the VPC"
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        # set the Name of the SG that will be created based on the Claim.
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "vpc-rabbitmq-sg-rule%s"
+          toFieldPath: metadata.name
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.suffix
+            strategy: string
+            string:
+              fmt: "marketplace-rabbitmq-sg%s"
+          toFieldPath: spec.forProvider.securityGroupIdSelector.matchLabels.name

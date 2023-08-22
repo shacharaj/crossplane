@@ -1,0 +1,3 @@
+resources:
+- bucket-with-policy.yaml
+- marketplace-vpc-subnets-claim.yaml

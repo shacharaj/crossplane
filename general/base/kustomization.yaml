@@ -1,0 +1,4 @@
+resources:
+#- bucket-with-policy.yaml
+- ecr-repository-claim.yaml
+- ecr-repository-claim2.yaml

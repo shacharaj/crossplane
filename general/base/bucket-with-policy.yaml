@@ -1,0 +1,46 @@
+apiVersion: s3.aws.crossplane.io/v1beta1
+kind: Bucket
+metadata:
+  name: vesttoo-marketplace
+  annotations:
+    # This will be the actual bucket name. It must be globally unique, so you
+    # probably want to change it before trying to apply this example.
+    crossplane.io/external-name: vesttoo-marketplace
+spec:
+  deletionPolicy: Delete
+  forProvider:
+    locationConstraint: us-east-1
+    publicAccessBlockConfiguration:
+      blockPublicPolicy: true
+    paymentConfiguration:
+      payer: BucketOwner
+    objectOwnership: BucketOwnerEnforced
+    serverSideEncryptionConfiguration:
+      rules:
+        - applyServerSideEncryptionByDefault:
+            sseAlgorithm: AES256
+    tagging:
+      tagSet:
+        - key: CreatedBy
+          value: marketplace-Crossplane
+        - key: Maintainers
+          value: "Vesttoo DevOps"
+        - key: GithubRepo
+          value: "git@gitlab.vesttoo.com:sw/devops/crossplane.git"
+    versioningConfiguration:
+      status: Suspended
+    policy:
+      version: '2012-10-17'
+      statements:
+        - sid: "CloudFront Access"
+          action:
+            - s3:GetObject
+          effect: Allow
+          principal:
+            allowAnon: false
+            awsPrincipals:
+              - iamUserArn: "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity E2MIV631NZ6NLW"
+          resource:
+            - "arn:aws:s3:::vesttoo-marketplace/*"
+  providerConfigRef:
+    name: aws-provider-config

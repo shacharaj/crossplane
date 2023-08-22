@@ -1,0 +1,47 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: ecrpolicy.ecr.vesttoo.com
+spec:
+  group: ecr.vesttoo.com
+  names:
+    kind: ecrpolicy
+    plural: ecrpolicy
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              parameters:
+                type: object
+                properties:
+                  ecrRegion:
+                    type: string
+                    description: the region where the ecr-repo will be created.
+                    oneOf:
+                      - pattern: 'us-east-1'
+                    required:
+                      - ecrRegion
+                  ecrName:
+                    type: string
+                    description: the Name of the ecr-repo that will be created.
+#                    oneOf:
+#                      - pattern: '^ecr-repo*'
+                    required:
+                      - ecrName
+              providerConfigName:
+                type: string
+                allOf:
+                  - pattern: 'aws-provider-config'
+            required:
+              - parameters
+              - providerConfigName
+  claimNames:
+    kind: ecrpolicy-claim
+    plural: ecrpolicy-claim

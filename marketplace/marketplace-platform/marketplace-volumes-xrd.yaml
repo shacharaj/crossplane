@@ -1,0 +1,119 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: rdswithmqs.volume.vesttoo.com
+spec:
+  group: volume.vesttoo.com
+  names:
+    kind: rdswithmq
+    plural: rdswithmqs
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              parameters:
+                type: object
+                properties:
+                  ## Global
+                  environment:
+                    type: string
+                    description: The Environment tag that will be attached to the resource.
+                  suffix:
+                    type: string
+                    description: The Environment suffix that will be attached to the resources that uses it.
+                    default: '-dev'
+                  region:
+                    type: string
+                    description: the region where the resource will be created.
+                    oneOf:
+                      - pattern: 'us-east-1'
+                  ## RDS
+                  allocatedStorage:
+                    type: integer
+                    description: the amount of storage (in gibibytes between 20-600) to allocate for the DB instance.
+                    oneOf:
+                      - pattern: '^([0-9]|[1-9][0-9]|600)$'
+                  dbClusterName:
+                    type: string
+                    description: the Name of the DB that will be created.
+                    oneOf:
+                      - pattern: '^marketplace-db*'
+                  backupRetentionPeriod:
+                    type: integer
+                    description: the number of days (between 1-35) for which automated backups are retained.
+                    oneOf:
+                      - pattern: '^(?:[1-9]|[1-2][0-9]|3[0-5])$'
+                  dbInstanceClass:
+                    type: string
+                    description: the instance type to use for the RDS.
+                    oneOf:
+                      - pattern: 'db.m5d.large'
+                  engineVersion:
+                    type: string
+                    description: the version number of the database engine to use (14.*).
+                    oneOf:
+                      - pattern:  '^(?:[1][4].*)$'
+                  deletionProtection:
+                    type: boolean
+                    description: indicates if the DB instance should have deletion protection enabled.
+                  publiclyAccessible:
+                    type: boolean
+                    description: PubliclyAccessible specifies the accessibility options for the DB instance.
+                  multiAZ:
+                    type: boolean
+                    description: MultiAZ specifies if the DB instance is a Multi-AZ deployment.
+                  masterUsername:
+                    type: string
+                    description: the name for the master user.
+                  ## RABBITMQ
+                  rabbitmqName:
+                    type: string
+                    description: the Name of the rabbitmq that will be created.
+                    oneOf:
+                      - pattern: '^marketplace-rabbitmq*'
+                  rabbitmqPassSecretNS:
+                    type: string
+                    description: This is the namesapce of the rabbitmq secret that will be used(secret created by marketplace-rabbitmq-secret.yaml)
+                  mqEngineVersion:
+                    type: string
+                    description: the version number of the rabbitmq engine to use (3.*).
+                    oneOf:
+                      - pattern:  '^(?:[3].*)$'
+                  hostInstanceType:
+                    type: string
+                    description: the instance type to use for the rabbitmq.
+                    oneOf:
+                      - pattern: 'mq.t3.micro'
+                required:
+                  - environment
+                  - suffix
+                  - region
+                  - dbClusterName
+                  - allocatedStorage
+                  - backupRetentionPeriod
+                  - engineVersion
+                  - deletionProtection
+                  - publiclyAccessible
+                  - multiAZ
+                  - masterUsername
+                  - rabbitmqName
+                  - rabbitmqPassSecretNS
+                  - mqEngineVersion
+                  - hostInstanceType
+              providerConfigName:
+                type: string
+                allOf:
+                  - pattern: 'aws-provider-config'
+            required:
+              - parameters
+              - providerConfigName
+  claimNames:
+    kind: rdswithmq-claim
+    plural: rdswithmqs-claim

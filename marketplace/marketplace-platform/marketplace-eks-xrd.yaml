@@ -1,0 +1,172 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: ekswithnodes.cluster.vesttoo.com
+spec:
+  group: cluster.vesttoo.com
+  names:
+    kind: ekswithnode
+    plural: ekswithnodes
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              parameters:
+                type: object
+                properties:
+                  ## Global
+                  environment:
+                    type: string
+                    description: The Environment tag that will be attached to the resource.
+                  suffix:
+                    type: string
+                    description: The Environment suffix that will be attached to the resources that uses it.
+                    default: '-dev'
+                  region:
+                    type: string
+                    description: the region where the eks cluster and resources will be created.
+                    oneOf:
+                      - pattern: 'us-east-1'
+                  providerConfigRef:
+                    type: string
+                    description: specifies the provider that will be used to create, observe, update, and delete this managed resource.
+                    oneOf:
+                      - pattern: 'aws-provider-config'
+                  ## EKS-Cluster
+                  clusterName:
+                    type: string
+                    description: the name of the eks cluster will be created.
+                  endpointPublicAccess:
+                    type: boolean
+                    description: determine whether to use a public endpoint to the API of the eks cluster will be created.
+                  publicAccessCidrs:
+                    type: array
+                    description: The CIDR blocks that are allowed access to your cluster's public Kubernetes API server endpoint.
+                    items:
+                      type: string
+                  k8sVersion:
+                    description: Kubernetes version of the eks cluster will be created.
+                    type: string
+                  enableLogging:
+                    type: boolean
+                    description: Enable or disable exporting the Kubernetes control plane logs for your cluster to CloudWatch Logs.
+                    default: true
+                  ## EKS ADD-ONS
+                  coreDnsAddonName:
+                    type: string
+                    description: the name the add-on that will be installed on the eks cluster.
+                    default: "marketplace-coredns-addon"
+                  vpcCniAddonName:
+                    type: string
+                    description: the name the add-on that will be installed on the eks cluster.
+                    defualt: "marketplace-vpc-cni-addon"
+                  ebsCsiAddonName:
+                    type: string
+                    description: the name the add-on that will be installed on the eks cluster.
+                    default: "marketplace-aws-ebs-csi-driver-addon"
+                  kubeProxyAddonName:
+                    type: string
+                    description: the name the add-on that will be installed on the eks cluster.
+                    default: "marketplace-kube-proxy-addon"
+                  providerConfigK8SName:
+                    type: string
+                    description: the name the provider that will be installed on the eks cluster.
+                    default: "provider-config-kubernetes"
+                  providerConfigHelmName:
+                    type: string
+                    description: the name the provider that will be installed on the eks cluster.
+                    default: "provider-config-helm"
+                  prometheusChartVersion:
+                    type: string
+                    description: the version of the Prometheus chart that will be deployed on the created cluster.
+                  karpenterChartVersion:
+                    type: string
+                    description: the version of the Karpenter chart that will be deployed on the created cluster.
+                  ## IAM
+                  iamRoleControlplaneName:
+                    type: string
+                    description: the Name of the Controlplane IAM-Role that will be created.
+                    oneOf:
+                      - pattern: '.*-controlplane-role'
+                  iamRoleManagedNodeName:
+                    type: string
+                    description: the Name of the managed-node IAM-Role that will be created.
+                    oneOf:
+                      - pattern: '.*-managed-nodegroup-role'
+                  ## EKS-NODES
+                  nodegroupName:
+                    type: string
+                    description: the Name of the EKS node-group that will be created.
+                    oneOf:
+                      - pattern: '^marketplace-nodegroup-*'
+                  desiredSize:
+                    description: Desired number of worker nodes in the cluster
+                    type: integer
+                    oneOf:
+                      - pattern: '[1-8]'
+                    default: 2
+                  minSize:
+                    description: Minimum number of worker nodes in the cluster
+                    type: integer
+                    oneOf:
+                      - pattern: '[0-5]'
+                    default: 1
+                  maxSize:
+                    description: Maximum number of worker nodes in the cluster
+                    type: integer
+                    oneOf:
+                      - pattern: '[2-8]'
+                    default: 2
+                  amiType:
+                    description: Type of workloads to be run on this cluster (GPU or non-GPU)"
+                    type: string
+                    enum: ["gpu", "non-gpu"]
+                  instanceTypes:
+                    type: string
+                    description: Instance Type of worker nodes in the cluster.
+                    enum:
+                      - large
+                      - xlarge
+                      - 2xlarge
+                required:
+                  - environment
+                  - suffix
+                  - region
+                  - providerConfigRef
+                  - clusterName
+                  - publicAccessCidrs
+                  - k8sVersion
+                  - coreDnsAddonName
+                  - ebsCsiAddonName
+                  - vpcCniAddonName
+                  - kubeProxyAddonName
+                  - providerConfigHelmName
+                  - providerConfigK8SName
+                  - karpenterChartVersion
+                  - prometheusChartVersion
+                  - enableLogging
+                  - iamRoleControlplaneName
+                  - iamRoleManagedNodeName
+                  - nodegroupName
+                  - desiredSize
+                  - minSize
+                  - maxSize
+                  - amiType
+                  - instanceTypes
+              providerConfigName:
+                type: string
+                allOf:
+                  - pattern: 'aws-provider-config'
+            required:
+              - parameters
+              - providerConfigName
+  claimNames:
+    kind: ekswithnode-claim
+    plural: ekswithnodes-claim

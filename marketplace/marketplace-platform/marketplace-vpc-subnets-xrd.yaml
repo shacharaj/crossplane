@@ -1,0 +1,275 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: vpcsubnets.network.vesttoo.com
+spec:
+  group: network.vesttoo.com
+  names:
+    kind: vpcsubnet
+    plural: vpcsubnets
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              parameters:
+                type: object
+                properties:
+                  environment:
+                    type: string
+                    description: The Environment tag that will be attached to the resource.
+                  suffix:
+                    type: string
+                    description: The Environment suffix that will be attached to the resources that uses it.
+                    default: '-dev'
+                  ## VPC
+                  vpcRegion:
+                    type: string
+                    description: the region where the vpc will be created.
+                    oneOf:
+                      - pattern: 'us-east-1'
+                  vpcCidrBlock:
+                    type: string
+                    description: the region where the vpc will be created.
+                    oneOf:
+                      - pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}($|/(16|24))$'
+                  vpcName:
+                    type: string
+                    description: the Name of the vpc that will be created.
+                    oneOf:
+                      - pattern: '^marketplace-vpc*'
+                  ## Public subnet 1
+                  publicSubnet1Name:
+                    type: string
+                    description: the Name of the public subnet that will be created.
+                    oneOf:
+                      - pattern: '^marketplace-public-subnet-1*'
+                  publicSubnet1CidrBlock:
+                    type: string
+                    description: the CIDR of the public subnet that will be created.
+                    oneOf:
+                      - pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}($|/(18|19|20))$'
+                  publicSubnet1AvailabilityZone:
+                    type: string
+                    description: the availability zone of the public subnet that will be created.
+                    oneOf:
+                      - pattern: '^us-east-1*'
+                  ## Public subnet 2
+                  publicSubnet2Name:
+                    type: string
+                    description: the Name of the public subnet that will be created.
+                    oneOf:
+                      - pattern: '^marketplace-public-subnet-2*'
+                  publicSubnet2CidrBlock:
+                    type: string
+                    description: the CIDR of the public subnet that will be created.
+                    oneOf:
+                      - pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}($|/(18|19|20))$'
+                  publicSubnet2AvailabilityZone:
+                    type: string
+                    description: the availability zone of the public subnet that will be created.
+                    oneOf:
+                      - pattern: '^us-east-1*'
+                  ## Public subnet 3
+                  publicSubnet3Name:
+                    type: string
+                    description: the Name of the public subnet that will be created.
+                    oneOf:
+                      - pattern: '^marketplace-public-subnet-3*'
+                  publicSubnet3CidrBlock:
+                    type: string
+                    description: the CIDR of the public subnet that will be created.
+                    oneOf:
+                      - pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}($|/(18|19|20))$'
+                  publicSubnet3AvailabilityZone:
+                    type: string
+                    description: the availability zone of the public subnet that will be created.
+                    oneOf:
+                      - pattern: '^us-east-1*'
+                  ## Private subnet 1
+                  privateSubnet1Name:
+                    type: string
+                    description: the Name of the private subnet that will be created.
+                    oneOf:
+                      - pattern: '^marketplace-private-subnet-1*'
+                  privateSubnet1CidrBlock:
+                    type: string
+                    description: the CIDR of the private subnet that will be created.
+                    oneOf:
+                      - pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}($|/(18|19|20))$'
+                  privateSubnet1AvailabilityZone:
+                    type: string
+                    description: the availability zone of the private subnet that will be created.
+                    oneOf:
+                      - pattern: '^us-east-1*'
+                  ## Private subnet 2
+                  privateSubnet2Name:
+                    type: string
+                    description: the Name of the private subnet that will be created.
+                    oneOf:
+                      - pattern: '^marketplace-private-subnet-2*'
+                  privateSubnet2CidrBlock:
+                    type: string
+                    description: the CIDR of the private subnet that will be created.
+                    oneOf:
+                      - pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}($|/(18|19|20))$'
+                  privateSubnet2AvailabilityZone:
+                    type: string
+                    description: the availability zone of the private subnet that will be created.
+                    oneOf:
+                      - pattern: '^us-east-1*'
+                  ## Private subnet 3
+                  privateSubnet3Name:
+                    type: string
+                    description: the Name of the private subnet that will be created.
+                    oneOf:
+                      - pattern: '^marketplace-private-subnet-3*'
+                  privateSubnet3CidrBlock:
+                    type: string
+                    description: the CIDR of the private subnet that will be created.
+                    oneOf:
+                      - pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}($|/(18|19|20))$'
+                  privateSubnet3AvailabilityZone:
+                    type: string
+                    description: the availability zone of the private subnet that will be created.
+                    oneOf:
+                      - pattern: '^us-east-1*'
+                  ## DB subnet 1
+                  dbSubnet1Name:
+                    type: string
+                    description: the Name of the DB subnet that will be created.
+                    oneOf:
+                      - pattern: '^marketplace-db-subnet-1*'
+                  dbSubnet1CidrBlock:
+                    type: string
+                    description: the CIDR of the DB subnet that will be created.
+                    oneOf:
+                      - pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}($|/(18|19|20))$'
+                  dbSubnet1AvailabilityZone:
+                    type: string
+                    description: the availability zone of the DB subnet that will be created.
+                    oneOf:
+                      - pattern: '^us-east-1*'
+                  ## DB subnet 2
+                  dbSubnet2Name:
+                    type: string
+                    description: the Name of the DB subnet that will be created.
+                    oneOf:
+                      - pattern: '^marketplace-db-subnet-2*'
+                  dbSubnet2CidrBlock:
+                    type: string
+                    description: the CIDR of the DB subnet that will be created.
+                    oneOf:
+                      - pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}($|/(18|19|20))$'
+                  dbSubnet2AvailabilityZone:
+                    type: string
+                    description: the availability zone of the DB subnet that will be created.
+                    oneOf:
+                      - pattern: '^us-east-1*'
+                  ## DB subnet 3
+                  dbSubnet3Name:
+                    type: string
+                    description: the Name of the DB subnet that will be created.
+                    oneOf:
+                      - pattern: '^marketplace-db-subnet-3*'
+                  dbSubnet3CidrBlock:
+                    type: string
+                    description: the CIDR of the DB subnet that will be created.
+                    oneOf:
+                      - pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}($|/(18|19|20))$'
+                  dbSubnet3AvailabilityZone:
+                    type: string
+                    description: the availability zone of the DB subnet that will be created.
+                    oneOf:
+                      - pattern: '^us-east-1*'
+                  ## ALL Subnets
+                  subnetLabelType:
+                    type: string
+                    description: Set the subnetIdSelector from the kustomize patches.
+                    oneOf:
+                      - pattern: '^marketplace-subnet*'
+                  ## IGW
+                  igwName:
+                    type: string
+                    description: the Name of IGW that will be created.
+                    oneOf:
+                      - pattern: '^marketplace-igw*'
+                  ## NATGateway
+                  natGatewayName:
+                    type: string
+                    description: the Name of NATGateway that will be created for the nat gateway of the private subnets.
+                    oneOf:
+                      - pattern: '^marketplace-nat-gateway-db*'
+                  ## eipName
+                  eipName:
+                    type: string
+                    description: the Name of eipName that will be created for the private subnets.
+                    oneOf:
+                      - pattern: '^marketplace-eip*'
+                  ## publicRTName
+                  publicRTName:
+                    type: string
+                    description: the Name of publicRTName that will be created.
+                    oneOf:
+                      - pattern: '^marketplace-public*'
+                  ## privateRTName
+                  privateRTName:
+                    type: string
+                    description: the Name of privateRTName that will be created.
+                    oneOf:
+                      - pattern: '^marketplace-private*'
+                required:
+                  - environment
+                  - suffix
+                  - vpcRegion
+                  - vpcCidrBlock
+                  - vpcName
+                  - publicSubnet1Name
+                  - publicSubnet2Name
+                  - publicSubnet3Name
+                  - publicSubnet1CidrBlock
+                  - publicSubnet2CidrBlock
+                  - publicSubnet3CidrBlock
+                  - publicSubnet1AvailabilityZone
+                  - publicSubnet2AvailabilityZone
+                  - publicSubnet3AvailabilityZone
+                  - privateSubnet1Name
+                  - privateSubnet2Name
+                  - privateSubnet3Name
+                  - privateSubnet1CidrBlock
+                  - privateSubnet2CidrBlock
+                  - privateSubnet3CidrBlock
+                  - privateSubnet1AvailabilityZone
+                  - privateSubnet2AvailabilityZone
+                  - privateSubnet3AvailabilityZone
+                  - dbSubnet1Name
+                  - dbSubnet2Name
+                  - dbSubnet3Name
+                  - dbSubnet1CidrBlock
+                  - dbSubnet2CidrBlock
+                  - dbSubnet3CidrBlock
+                  - dbSubnet1AvailabilityZone
+                  - dbSubnet2AvailabilityZone
+                  - dbSubnet3AvailabilityZone
+                  - subnetLabelType
+                  - igwName
+                  - natGatewayName
+                  - eipName
+                  - publicRTName
+                  - privateRTName
+              providerConfigName:
+                type: string
+                allOf:
+                  - pattern: 'aws-provider-config'
+            required:
+              - parameters
+              - providerConfigName
+  claimNames:
+    kind: vpcsubnet-claim
+    plural: vpcsubnets-claim

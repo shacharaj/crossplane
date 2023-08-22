@@ -1,0 +1,906 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: vpc-with-subnets
+  labels:
+    vesttoo.marketplace/provider: aws
+    service: vpcsubnet
+    vesttoo.marketplace/xrd: vpcsubnets.network.vesttoo.com
+spec:
+  compositeTypeRef:
+    apiVersion: network.vesttoo.com/v1alpha1
+    kind: vpcsubnet
+  resources:
+# VPC
+    - name: vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: VPC
+        metadata:
+          name: marketplace-vpc
+          labels:
+            type: vpc
+            name: marketplace-vpc
+        spec:
+          forProvider:
+            region: us-east-1
+            cidrBlock: 10.0.0.0/16
+            enableDnsSupport: true
+            enableDnsHostNames: true
+            tags:
+              - key: Name
+                value: marketplace-vpc
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: vpc-with-subnets
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the region where the vpc will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcRegion"
+          toFieldPath: "spec.forProvider.region"
+        # set the CIDR of the vpc that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcCidrBlock"
+          toFieldPath: "spec.forProvider.cidrBlock"
+        # set the Name of the vpc that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcName"
+          toFieldPath: "spec.forProvider.tags[0].value"
+        # label the Name of the vpc that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcName"
+          toFieldPath: "metadata.labels.name"
+        # Set the Environment name for the resource will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[4].value"
+# PUBLIC SUBNET1
+    - name: public-subnet1
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: Subnet
+        metadata:
+          name: public-subnet1
+          labels:
+            type: marketplace-subnet
+            visibility: public
+            name: public-subnet1
+            zone: us-east-1a
+        spec:
+          forProvider:
+            region: us-east-1
+            availabilityZone: us-east-1a
+            vpcIdSelector:
+              matchLabels:
+                name: marketplace-vpc
+            cidrBlock: 10.0.0.0/20
+            mapPublicIpOnLaunch: true
+            tags:
+              - key: Name
+                value: public-subnet1
+              - key: kubernetes.io/role/elb
+                value: "1"
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: vpc-with-subnets
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the CIDR of the subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.publicSubnet1CidrBlock"
+          toFieldPath: "spec.forProvider.cidrBlock"
+        # set the Name of the Public subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.publicSubnet1Name"
+          toFieldPath: "spec.forProvider.tags[0].value"
+        - fromFieldPath: "spec.parameters.publicSubnet1Name"
+          toFieldPath: "metadata.labels.name"
+        - fromFieldPath: "spec.parameters.subnetLabelType"
+          toFieldPath: "metadata.labels.type"
+        # set the Name of the vpc that the subnets will be associated to based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcName"
+          toFieldPath: "spec.forProvider.vpcIdSelector.matchLabels.name"
+        # set the availability zone of the Public subnet to based on the Claim.
+        - fromFieldPath: "spec.parameters.publicSubnet1AvailabilityZone"
+          toFieldPath: "spec.forProvider.availabilityZone"
+        - fromFieldPath: "spec.parameters.publicSubnet1AvailabilityZone"
+          toFieldPath: "metadata.labels.zone"
+        # Set the Environment name for the resource will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[5].value"
+# PUBLIC SUBNET2
+    - name: public-subnet2
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: Subnet
+        metadata:
+          name: public-subnet2
+          labels:
+            type: marketplace-subnet
+            visibility: public
+            name: public-subnet2
+            zone: us-east-1b
+        spec:
+          forProvider:
+            region: us-east-1
+            availabilityZone: us-east-1a
+            vpcIdSelector:
+              matchLabels:
+                name: marketplace-vpc
+            cidrBlock: 10.0.16.0/20
+            mapPublicIpOnLaunch: true
+            tags:
+              - key: Name
+                value: public-subnet2
+              - key: kubernetes.io/role/elb
+                value: "1"
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: vpc-with-subnets
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the CIDR of the subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.publicSubnet2CidrBlock"
+          toFieldPath: "spec.forProvider.cidrBlock"
+        # set the Name of the Public subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.publicSubnet2Name"
+          toFieldPath: "spec.forProvider.tags[0].value"
+        - fromFieldPath: "spec.parameters.publicSubnet2Name"
+          toFieldPath: "metadata.labels.name"
+        - fromFieldPath: "spec.parameters.subnetLabelType"
+          toFieldPath: "metadata.labels.type"
+        # set the Name of the vpc that the subnets will be associated to based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcName"
+          toFieldPath: "spec.forProvider.vpcIdSelector.matchLabels.name"
+        # set the availability zone of the Public subnet to based on the Claim.
+        - fromFieldPath: "spec.parameters.publicSubnet2AvailabilityZone"
+          toFieldPath: "spec.forProvider.availabilityZone"
+        - fromFieldPath: "spec.parameters.publicSubnet2AvailabilityZone"
+          toFieldPath: "metadata.labels.zone"
+        # Set the Environment name for the resource will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[5].value"
+# PUBLIC SUBNET3
+    - name: public-subnet3
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: Subnet
+        metadata:
+          name: public-subnet3
+          labels:
+            type: marketplace-subnet
+            visibility: public
+            name: public-subnet3
+            zone: us-east-1c
+        spec:
+          forProvider:
+            region: us-east-1
+            availabilityZone: us-east-1a
+            vpcIdSelector:
+              matchLabels:
+                name: marketplace-vpc
+            cidrBlock: 10.0.32.0/20
+            mapPublicIpOnLaunch: true
+            tags:
+              - key: Name
+                value: public-subnet3
+              - key: kubernetes.io/role/elb
+                value: "1"
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: vpc-with-subnets
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the CIDR of the subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.publicSubnet3CidrBlock"
+          toFieldPath: "spec.forProvider.cidrBlock"
+        # set the Name of the Public subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.publicSubnet3Name"
+          toFieldPath: "spec.forProvider.tags[0].value"
+        - fromFieldPath: "spec.parameters.publicSubnet13ame"
+          toFieldPath: "metadata.labels.name"
+        - fromFieldPath: "spec.parameters.subnetLabelType"
+          toFieldPath: "metadata.labels.type"
+        # set the Name of the vpc that the subnets will be associated to based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcName"
+          toFieldPath: "spec.forProvider.vpcIdSelector.matchLabels.name"
+        # set the availability zone of the Public subnet to based on the Claim.
+        - fromFieldPath: "spec.parameters.publicSubnet3AvailabilityZone"
+          toFieldPath: "spec.forProvider.availabilityZone"
+        - fromFieldPath: "spec.parameters.publicSubnet3AvailabilityZone"
+          toFieldPath: "metadata.labels.zone"
+        # Set the Environment name for the resource will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[5].value"
+# PRIVATE SUBNET1
+    - name: private-subnet1
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: Subnet
+        metadata:
+          name: private-subnet1
+          labels:
+            visibility: private-1
+            subnet-type: private
+        spec:
+          forProvider:
+            region: us-east-1
+            availabilityZone: us-east-1b
+            vpcIdSelector:
+              matchLabels:
+                name: marketplace-vpc
+            cidrBlock: 10.0.48.0/20
+            mapPublicIpOnLaunch: false
+            tags:
+              - key: Name
+                value: private-subnet1
+              - key: kubernetes.io/role/elb
+                value: "1"
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: vpc-with-subnets
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the CIDR of the subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.privateSubnet1CidrBlock"
+          toFieldPath: "spec.forProvider.cidrBlock"
+        # set the Name and labels of the Private subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.privateSubnet1Name"
+          toFieldPath: "spec.forProvider.tags[0].value"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "metadata.labels.visibility"
+          transforms:
+            - type: string
+              string:
+                fmt: "private-1%s"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "metadata.labels.subnet-type"
+          transforms:
+            - type: string
+              string:
+                fmt: "private%s"
+        # set the Name of the vpc that the subnets will be associated to based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcName"
+          toFieldPath: "spec.forProvider.vpcIdSelector.matchLabels.name"
+        # set the availability zone of the Private subnet to based on the Claim.
+        - fromFieldPath: "spec.parameters.privateSubnet1AvailabilityZone"
+          toFieldPath: "spec.forProvider.availabilityZone"
+        # Set the Environment name for the resource will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[5].value"
+# PRIVATE SUBNET2
+    - name: private-subnet2
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: Subnet
+        metadata:
+          name: private-subnet2
+          labels:
+            visibility: private-2
+            subnet-type: private
+        spec:
+          forProvider:
+            region: us-east-1
+            availabilityZone: us-east-1b
+            vpcIdSelector:
+              matchLabels:
+                name: marketplace-vpc
+            cidrBlock: 10.0.64.0/20
+            mapPublicIpOnLaunch: false
+            tags:
+              - key: Name
+                value: private-subnet2
+              - key: kubernetes.io/role/elb
+                value: "1"
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: vpc-with-subnets
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the CIDR of the subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.privateSubnet2CidrBlock"
+          toFieldPath: "spec.forProvider.cidrBlock"
+        # set the Name and labels of the Private subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.privateSubnet2Name"
+          toFieldPath: "spec.forProvider.tags[0].value"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "metadata.labels.visibility"
+          transforms:
+            - type: string
+              string:
+                fmt: "private-2%s"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "metadata.labels.subnet-type"
+          transforms:
+            - type: string
+              string:
+                fmt: "private%s"
+        # set the Name of the vpc that the subnets will be associated to based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcName"
+          toFieldPath: "spec.forProvider.vpcIdSelector.matchLabels.name"
+        # set the availability zone of the Private subnet to based on the Claim.
+        - fromFieldPath: "spec.parameters.privateSubnet2AvailabilityZone"
+          toFieldPath: "spec.forProvider.availabilityZone"
+        # Set the Environment name for the resource will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[5].value"
+# PRIVATE SUBNET3
+    - name: private-subnet3
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: Subnet
+        metadata:
+          name: private-subnet3
+          labels:
+            visibility: private-3
+            subnet-type: private
+        spec:
+          forProvider:
+            region: us-east-1
+            availabilityZone: us-east-1c
+            vpcIdSelector:
+              matchLabels:
+                name: marketplace-vpc
+            cidrBlock: 10.0.80.0/20
+            mapPublicIpOnLaunch: false
+            tags:
+              - key: Name
+                value: private-subnet3
+              - key: kubernetes.io/role/elb
+                value: "1"
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: vpc-with-subnets
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the CIDR of the subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.privateSubnet3CidrBlock"
+          toFieldPath: "spec.forProvider.cidrBlock"
+        # set the Name and labels of the Private subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.privateSubnet3Name"
+          toFieldPath: "spec.forProvider.tags[0].value"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "metadata.labels.visibility"
+          transforms:
+            - type: string
+              string:
+                fmt: "private-3%s"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "metadata.labels.subnet-type"
+          transforms:
+            - type: string
+              string:
+                fmt: "private%s"
+        - fromFieldPath: "spec.parameters.vpcName"
+          toFieldPath: "spec.forProvider.vpcIdSelector.matchLabels.name"
+        # set the availability zone of the Private subnet to based on the Claim.
+        - fromFieldPath: "spec.parameters.privateSubnet3AvailabilityZone"
+          toFieldPath: "spec.forProvider.availabilityZone"
+        # Set the Environment name for the resource will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[5].value"
+# DB SUBNET1
+    - name: db-subnet1
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: Subnet
+        metadata:
+          name: db-subnet1
+          labels:
+            visibility: private-db-1
+            subnet-type: db
+        spec:
+          forProvider:
+            region: us-east-1
+            availabilityZone: us-east-1a
+            vpcIdSelector:
+              matchLabels:
+                name: marketplace-vpc
+            cidrBlock: 172.21.48.0/20
+            mapPublicIpOnLaunch: false
+            tags:
+              - key: Name
+                value: db-subnet1
+              - key: kubernetes.io/role/elb
+                value: "1"
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: vpc-with-subnets
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the CIDR of the subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.dbSubnet1CidrBlock"
+          toFieldPath: "spec.forProvider.cidrBlock"
+        # set the Name and labels of the db subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.dbSubnet1Name"
+          toFieldPath: "spec.forProvider.tags[0].value"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "metadata.labels.visibility"
+          transforms:
+            - type: string
+              string:
+                fmt: "private-db-1%s"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "metadata.labels.subnet-type"
+          transforms:
+            - type: string
+              string:
+                fmt: "db%s"
+        # set the Name of the vpc that the subnets will be associated to based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcName"
+          toFieldPath: "spec.forProvider.vpcIdSelector.matchLabels.name"
+        # set the availability zone of the db subnet to based on the Claim.
+        - fromFieldPath: "spec.parameters.dbSubnet1AvailabilityZone"
+          toFieldPath: "spec.forProvider.availabilityZone"
+        # Set the Environment name for the resource will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[5].value"
+# DB SUBNET2
+    - name: db-subnet2
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: Subnet
+        metadata:
+          name: db-subnet2
+          labels:
+            visibility: private-db-2
+            subnet-type: db
+        spec:
+          forProvider:
+            region: us-east-1
+            availabilityZone: us-east-1b
+            vpcIdSelector:
+              matchLabels:
+                name: marketplace-vpc
+            cidrBlock: 172.21.64.0/20
+            mapPublicIpOnLaunch: false
+            tags:
+              - key: Name
+                value: db-subnet2
+              - key: kubernetes.io/role/elb
+                value: "1"
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: vpc-with-subnets
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the CIDR of the subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.dbSubnet2CidrBlock"
+          toFieldPath: "spec.forProvider.cidrBlock"
+        # set the Name and labels of the db subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.dbSubnet2Name"
+          toFieldPath: "spec.forProvider.tags[0].value"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "metadata.labels.visibility"
+          transforms:
+            - type: string
+              string:
+                fmt: "private-db-2%s"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "metadata.labels.subnet-type"
+          transforms:
+            - type: string
+              string:
+                fmt: "db%s"
+        # set the Name of the vpc that the subnets will be associated to based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcName"
+          toFieldPath: "spec.forProvider.vpcIdSelector.matchLabels.name"
+        # set the availability zone of the db subnet to based on the Claim.
+        - fromFieldPath: "spec.parameters.dbSubnet2AvailabilityZone"
+          toFieldPath: "spec.forProvider.availabilityZone"
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[5].value"
+# DB SUBNET3
+    - name: db-subnet3
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: Subnet
+        metadata:
+          name: db-subnet3
+          labels:
+            visibility: private-db-3
+            subnet-type: db
+            mq-subnet: mq
+        spec:
+          forProvider:
+            region: us-east-1
+            availabilityZone: us-east-1c
+            vpcIdSelector:
+              matchLabels:
+                name: marketplace-vpc
+            cidrBlock: 172.21.80.0/20
+            mapPublicIpOnLaunch: false
+            tags:
+              - key: Name
+                value: db-subnet3
+              - key: kubernetes.io/role/elb
+                value: "1"
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: vpc-with-subnets
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the CIDR of the subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.dbSubnet3CidrBlock"
+          toFieldPath: "spec.forProvider.cidrBlock"
+        # set the Name and labels of the db subnet that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.dbSubnet3Name"
+          toFieldPath: "spec.forProvider.tags[0].value"
+        - fromFieldPath: "spec.parameters.dbSubnet3Name"
+          toFieldPath: "metadata.labels.name"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "metadata.labels.visibility"
+          transforms:
+            - type: string
+              string:
+                fmt: "private-db-3%s"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "metadata.labels.subnet-type"
+          transforms:
+            - type: string
+              string:
+                fmt: "db%s"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "metadata.labels.mq-subnet"
+          transforms:
+            - type: string
+              string:
+                fmt: "mq%s"
+        # set the Name of the vpc that the subnets will be associated to based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcName"
+          toFieldPath: "spec.forProvider.vpcIdSelector.matchLabels.name"
+        # set the availability zone of the db subnet to based on the Claim.
+        - fromFieldPath: "spec.parameters.dbSubnet3AvailabilityZone"
+          toFieldPath: "spec.forProvider.availabilityZone"
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[5].value"
+# Internet Gateway
+    - name: internetgateway
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: InternetGateway
+        metadata:
+          labels:
+            type: marketplace-igw
+        spec:
+          forProvider:
+            vpcIdSelector:
+              matchLabels:
+                name: marketplace-vpc
+            tags:
+              - key: Name
+                value: IGW
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: vpc-with-subnets
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the Name of the IGW that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.igwName"
+          toFieldPath: "spec.forProvider.tags[0].value"
+        - fromFieldPath: "spec.parameters.igwName"
+          toFieldPath: "metadata.labels.type"
+        # set the Name of the vpc that the subnets will be associated to based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcName"
+          toFieldPath: "spec.forProvider.vpcIdSelector.matchLabels.name"
+        # Set the Environment name for the resource will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[4].value"
+# Single NAT Gateway for Private Subnets
+    - name: single-natgateway
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: NATGateway
+        metadata:
+          labels:
+            type: marketplace-natgw
+        spec:
+          forProvider:
+            allocationIdSelector:
+              matchLabels:
+                type: marketplace-eip
+            connectivityType:
+            region: us-east-1
+            subnetIdSelector:
+              matchLabels:
+                type: marketplace-subnet
+                visibility: public
+            tags:
+              - key: Name
+                value: marketplace-natgateway
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: vpc-with-subnets
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the Name of the NATGateway that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.natGatewayName"
+          toFieldPath: "spec.forProvider.tags[0].value"
+        - fromFieldPath: "spec.parameters.natGatewayName"
+          toFieldPath: "metadata.labels.type"
+        # set the region where the NAT will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcRegion"
+          toFieldPath: "spec.forProvider.region"
+        # Set the Environment name for the resource will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[4].value"
+        # Set the subnetIdSelector from the kustomize patches
+        - fromFieldPath: "spec.parameters.subnetLabelType"
+          toFieldPath: "spec.forProvider.subnetIdSelector.matchLabels.type"
+# ElasticIp for privateNAT Gateway
+    - name: elastic-ip
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: Address
+        metadata:
+          labels:
+            type: marketplace-eip
+        spec:
+          forProvider:
+            domain: vpc
+            region: us-east-1
+            tags:
+              - key: Name
+                value: marketplace-eip
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: vpc-with-subnets
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the Name of the eipName that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.eipName"
+          toFieldPath: "spec.forProvider.tags[0].value"
+        # set the region where the EIP of the NAT GW will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcRegion"
+          toFieldPath: "spec.forProvider.region"
+        # Set the Environment name for the resource will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[4].value"
+# Public Route Table
+    - name: public-route-table
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: RouteTable
+        spec:
+          forProvider:
+            vpcIdSelector:
+              matchLabels:
+                name: marketplace-vpc
+            region: us-east-1
+            routes:
+              - destinationCidrBlock: 0.0.0.0/0
+                gatewayIdSelector:
+                  matchLabels:
+                    type: marketplace-igw
+            associations:
+              - subnetIdSelector:
+                  matchLabels:
+                    type: marketplace-subnet
+                    visibility: public
+                    zone: us-east-1a
+              - subnetIdSelector:
+                  matchLabels:
+                    type: marketplace-subnet
+                    visibility: public
+                    zone: us-east-1b
+              - subnetIdSelector:
+                  matchLabels:
+                    type: marketplace-subnet
+                    visibility: public
+                    zone: us-east-1c
+            tags:
+              - key: Name
+                value: marketplace-public-rt
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: vpc-with-subnets
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the Name of the Public Route Table that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.publicRTName"
+          toFieldPath: "spec.forProvider.tags[0].value"
+        # set the region where the Public Route Table will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcRegion"
+          toFieldPath: "spec.forProvider.region"
+        # set the Name of the vpc that the Public Route Table will be associated to based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcName"
+          toFieldPath: "spec.forProvider.vpcIdSelector.matchLabels.name"
+        # set the Name of the IGW that the Public Route Table will be associated to based on the Claim.
+        - fromFieldPath: "spec.parameters.igwName"
+          toFieldPath: "spec.forProvider.routes[0].gatewayIdSelector.matchLabels.type"
+        # Set the Environment name for the resource will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[4].value"
+        # AZ to match the Public Route Table
+        - fromFieldPath: spec.parameters.publicSubnet1AvailabilityZone
+          toFieldPath: spec.forProvider.associations[0].subnetIdSelector.matchLabels.zone
+        - fromFieldPath: spec.parameters.publicSubnet2AvailabilityZone
+          toFieldPath: spec.forProvider.associations[1].subnetIdSelector.matchLabels.zone
+        - fromFieldPath: spec.parameters.publicSubnet3AvailabilityZone
+          toFieldPath: spec.forProvider.associations[2].subnetIdSelector.matchLabels.zone
+        # Set the subnetIdSelector from the kustomize patches
+        - fromFieldPath: "spec.parameters.subnetLabelType"
+          toFieldPath: "spec.forProvider.associations[0].subnetIdSelector.matchLabels.type"
+        - fromFieldPath: "spec.parameters.subnetLabelType"
+          toFieldPath: "spec.forProvider.associations[1].subnetIdSelector.matchLabels.type"
+        - fromFieldPath: "spec.parameters.subnetLabelType"
+          toFieldPath: "spec.forProvider.associations[2].subnetIdSelector.matchLabels.type"
+# Private Route Table
+    - name: private-route-table
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: RouteTable
+        spec:
+          forProvider:
+            vpcIdSelector:
+              matchLabels:
+                name: marketplace-vpc
+            region: us-east-1
+            routes:
+              - destinationCidrBlock: 0.0.0.0/0
+                natGatewayIdSelector:
+                  matchLabels:
+                    type: marketplace-nat-gateway
+            associations:
+              - subnetIdSelector:
+                  matchLabels:
+                    visibility: private-1
+              - subnetIdSelector:
+                  matchLabels:
+                    visibility: private-2
+              - subnetIdSelector:
+                  matchLabels:
+                    visibility: private-3
+              - subnetIdSelector:
+                  matchLabels:
+                    visibility: private-db-1
+              - subnetIdSelector:
+                  matchLabels:
+                    visibility: private-db-2
+              - subnetIdSelector:
+                  matchLabels:
+                    visibility: private-db-3
+            tags:
+              - key: Name
+                value: marketplace-private-rt
+              - key: CreatedBy
+                value: marketplace-crossplane
+              - key: Maintainers
+                value: Vesttoo DevOps
+              - key: composition
+                value: vpc-with-subnets
+              - key: Environment
+                value: marketplace
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        # set the Name of the Private Route Table that will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.privateRTName"
+          toFieldPath: "spec.forProvider.tags[0].value"
+        # set the region where the Private Route Table will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcRegion"
+          toFieldPath: "spec.forProvider.region"
+        # set the Name of the vpc that the Private Route Table will be associated to based on the Claim.
+        - fromFieldPath: "spec.parameters.vpcName"
+          toFieldPath: "spec.forProvider.vpcIdSelector.matchLabels.name"
+        # set the Name of the IGW that the Private Route Table will be associated to based on the Claim.
+        - fromFieldPath: "spec.parameters.natGatewayName"
+          toFieldPath: "spec.forProvider.routes[0].natGatewayIdSelector.matchLabels.type"
+        # Set the Environment name for the resource will be created based on the Claim.
+        - fromFieldPath: "spec.parameters.environment"
+          toFieldPath: "spec.forProvider.tags[4].value"
+        # Set the subnetIdSelector from the kustomize patches
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "spec.forProvider.associations[0].subnetIdSelector.matchLabels.visibility"
+          transforms:
+            - type: string
+              string:
+                fmt: "private-1%s"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "spec.forProvider.associations[1].subnetIdSelector.matchLabels.visibility"
+          transforms:
+            - type: string
+              string:
+                fmt: "private-2%s"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "spec.forProvider.associations[2].subnetIdSelector.matchLabels.visibility"
+          transforms:
+            - type: string
+              string:
+                fmt: "private-3%s"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "spec.forProvider.associations[3].subnetIdSelector.matchLabels.visibility"
+          transforms:
+            - type: string
+              string:
+                fmt: "private-db-1%s"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "spec.forProvider.associations[4].subnetIdSelector.matchLabels.visibility"
+          transforms:
+            - type: string
+              string:
+                fmt: "private-db-2%s"
+        - fromFieldPath: "spec.parameters.suffix"
+          toFieldPath: "spec.forProvider.associations[5].subnetIdSelector.matchLabels.visibility"
+          transforms:
+            - type: string
+              string:
+                fmt: "private-db-3%s"
